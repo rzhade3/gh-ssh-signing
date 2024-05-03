@@ -1,26 +1,38 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-
-	"github.com/cli/go-gh/v2/pkg/api"
 )
 
 func main() {
-	fmt.Println("hi world, this is the gh-ssh-signing extension!")
-	client, err := api.DefaultRESTClient()
-	if err != nil {
-		fmt.Println(err)
-		return
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", "Configure and download user's SSH Signing keys.")
+		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", "USAGE")
+		fmt.Fprintf(flag.CommandLine.Output(), "  %s\n\n", "gh ssh-signing <command> (args)")
+		fmt.Fprintf(flag.CommandLine.Output(), "%s\n", "COMMANDS")
+		fmt.Fprintf(flag.CommandLine.Output(), "  %s\n", "  init:           Initialize your system for use with SSH Signing keys")
+		fmt.Fprintf(flag.CommandLine.Output(), "  %s\n", "  add (username): Add a new SSH Signing key for a particular user (must specify GitHub username)")
+		fmt.Fprintf(flag.CommandLine.Output(), "  %s\n", "  list:           List all current SSH Signing keys")
+		flag.PrintDefaults()
+		fmt.Println()
 	}
-	response := struct {Login string}{}
-	err = client.Get("user", &response)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	fmt.Printf("running as %s\n", response.Login)
-}
+	flag.Parse()
+	args := flag.Args()
 
-// For more examples of using go-gh, see:
-// https://github.com/cli/go-gh/blob/trunk/example_gh_test.go
+	if len(args) == 0 {
+		flag.Usage()
+		return
+	}
+	subcmd, args := args[0], args[1:]
+	switch subcmd {
+	case "init":
+		InitCmd(args)
+	case "add":
+		AddCmd(args)
+	case "list":
+		ListCmd()
+	default:
+		flag.Usage()
+	}
+}

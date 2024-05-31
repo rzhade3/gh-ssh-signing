@@ -24,6 +24,14 @@ func GetSignersFile() (string, error) {
 	return strings.TrimSpace(string(stdoutStderr)), nil
 }
 
+func GetSshFile() (string, error) {
+	stdoutStderr, err := exec.Command("git", "config", "--global", "user.signingkey").CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(stdoutStderr)), nil
+}
+
 func ReadConfig(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {

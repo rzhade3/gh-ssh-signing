@@ -8,33 +8,87 @@ import (
 	"strings"
 )
 
-func InitCmd(args []string) {
-	configFile, err := DefaultSignersFile()
+type InitArgs struct {
+	ConfigFile string
+	SshFile    string
+}
+
+func InitCmd(args InitArgs) {
+	fmt.Println("Checking if SSH commit signing is set")
+	sshConfigured, err := checkSshConfiguration()
 	if err != nil {
-		fmt.Println("Something went wrong while getting the default allowedSignersFile")
+		fmt.Println("Something went wrong while checking for the SSH configuration, %v", err)
 		return
 	}
-	if len(args) != 0 {
-		configFile = args[0]
+	if !sshConfigured {
+		fmt.Println("> SSH commit signing not detected, setting up SSH commit signing")
+		if args.SshFile == "" {
+			fmt.Println("> You must specify the path to the SSH file")
+			return
+		}
+		err := setSshConfiguration(args.SshFile)
+		if err != nil {
+			fmt.Println("> Something went wrong while setting the SSH configuration")
+			return
+		}
+	}
+
+	fmt.Println("Checking if local verification configuration is set")
+	configFile, err := DefaultSignersFile()
+	if err != nil {
+		fmt.Println("> Something went wrong while getting the default allowedSignersFile")
+		return
+	}
+	if args.ConfigFile != "" {
+		configFile = args.ConfigFile
 	}
 
 	// First check if the Signers file exists
 	// If it does not exist, create it
 	fileExists, err := checkIfSignersFileExists()
 	if err != nil {
-		fmt.Println("Something went wrong while checking for the allowedSignersFile")
+		fmt.Println("> Something went wrong while checking for the allowedSignersFile")
 		return
 	}
 	if !fileExists {
-		fmt.Println("allowedSignersFile not detected, linking existing or creating new file")
+		fmt.Println("> allowedSignersFile not detected, linking existing or creating new file")
 		filename, err := createOrLinkSignersFile(configFile)
-		fmt.Printf("Created allowedSignersFile at: %s\n", filename)
+		fmt.Printf("> Created allowedSignersFile at: %s\n", filename)
 		if err != nil {
-			fmt.Printf("Something went wrong while creating the allowedSignersFile: %v\n", err)
+			fmt.Printf("> Something went wrong while creating the allowedSignersFile: %v\n", err)
 			return
 		}
 	}
-	fmt.Printf("allowedSignersFile has been set at %s\n", configFile)
+	fmt.Printf("> allowedSignersFile has been set at %s\n", configFile)
+}
+
+func checkSshConfiguration() (bool, error) {
+	stdoutStderr, err := exec.Command("git", "config", "--global", "gpg.format").CombinedOutput()
+	if err != nil {
+		return false, nil
+	}
+	if strings.TrimSpace(string(stdoutStderr)) != "ssh" {
+		return false, nil
+	}
+	stdoutStderr, err = exec.Command("git", "config", "--global", "user.signingkey").CombinedOutput()
+	if err != nil {
+		return false, err
+	}
+	sshFile := strings.TrimSpace(string(stdoutStderr))
+	_, err = os.Stat(sshFile)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, nil
+}
+
+func setSshConfiguration(sshFile string) error {
+	err := exec.Command("git", "config", "--global", "gpg.format", "ssh").Run()
+	if err != nil {
+		return err
+	}
+	err = exec.Command("git", "config", "--global", "user.signingkey", sshFile).Run()
+	return err
 }
 
 func checkIfSignersFileExists() (bool, error) {

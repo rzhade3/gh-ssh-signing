@@ -6,14 +6,14 @@ import (
 	"github.com/cli/go-gh/v2/pkg/api"
 )
 
-func AddCmd(args []string) {
-	// Add a new SSH Signing key for a particular user (must specify GitHub username)
+func ImportCmd(args []string) {
+	// Imports a new SSH Signing key for a particular user (must specify GitHub username)
 	if len(args) == 0 {
 		fmt.Println("You must specify a GitHub username")
 		return
 	}
 	username := args[0]
-	fmt.Printf("Adding SSH Signing key for user: %s\n", username)
+	fmt.Printf("Importing SSH Signing key for user: %s\n", username)
 
 	client, err := api.DefaultRESTClient()
 	if err != nil {
@@ -64,8 +64,8 @@ func AddCmd(args []string) {
 		return
 	}
 	for _, key := range keyResponse {
-		line := fmt.Sprintf("%s %s", userResponse.Email, key.Key)
+		line := fmt.Sprintf("%s namespaces=\"git\" %s", userResponse.Email, key.Key)
 		err = WriteToConfig(signersFile, line)
 	}
-	fmt.Println("Added SSH Signing key for user!")
+	fmt.Println("Imported SSH Signing key for user!")
 }
